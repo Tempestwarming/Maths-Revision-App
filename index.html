@@ -1,288 +1,979 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>GCSE Maths Diagnostic</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maths Diagnostic Tool</title>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    :root {
+      --bg-1: #050505;
+      --bg-2: #0d0d0d;
+      --panel: rgba(255,255,255,0.08);
+      --panel-strong: rgba(255,255,255,0.12);
+      --border: rgba(255,255,255,0.14);
+      --text: #f4f7f2;
+      --muted: #b7c0b4;
+      --green-1: #32d74b;
+      --green-2: #0cbf72;
+      --yellow-1: #ffe66d;
+      --yellow-2: #ffb703;
+      --danger: #ff5f57;
+      --ok: #30d158;
+      --shadow: 0 12px 40px rgba(0,0,0,0.35);
+      --radius: 22px;
+    }
 
-<style>
-/* KEEPING YOUR STYLING EXACT */
-body{font-family:Arial;background:#052a16;color:#fff;margin:0;padding:20px}
-.panel{background:#111;padding:20px;border-radius:12px;margin-bottom:15px}
-.big-btn{padding:12px;width:100%;margin-top:10px;background:gold;border:none;border-radius:8px;font-weight:bold;cursor:pointer}
-.small-btn{padding:10px;margin-top:10px;background:#333;color:#fff;border:none;border-radius:6px;cursor:pointer}
-.option{padding:12px;margin:10px 0;background:#222;border-radius:8px;cursor:pointer}
-.correct{background:#14532d}
-.wrong{background:#7f1d1d}
-</style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(50,215,75,0.12), transparent 30%),
+        radial-gradient(circle at top right, rgba(255,183,3,0.10), transparent 28%),
+        linear-gradient(180deg, var(--bg-1), var(--bg-2));
+      min-height: 100vh;
+    }
+
+    .app-shell {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.3fr 0.9fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .panel {
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card,
+    .tracker-card,
+    .content-card,
+    .topic-card,
+    .stat-card,
+    .question-card,
+    .results-card,
+    .revision-card {
+      padding: 22px;
+    }
+
+    h1, h2, h3, h4, p { margin-top: 0; }
+    h1 { font-size: 2rem; letter-spacing: 0.2px; }
+    h2 { font-size: 1.35rem; }
+    h3 { font-size: 1.05rem; }
+    .muted { color: var(--muted); }
+
+    .button-row,
+    .topic-grid,
+    .subtopic-grid,
+    .stats-grid,
+    .results-grid,
+    .revision-grid,
+    .top-nav {
+      display: grid;
+      gap: 12px;
+    }
+
+    .button-row {
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      margin-top: 18px;
+    }
+
+    .top-nav {
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      margin-bottom: 18px;
+    }
+
+    .topic-grid,
+    .subtopic-grid,
+    .results-grid,
+    .revision-grid {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .stats-grid {
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      margin-top: 16px;
+    }
+
+    .glass-btn,
+    .nav-btn,
+    .answer-btn,
+    .ghost-btn,
+    .chip-btn,
+    .small-btn {
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 18px;
+      color: #101410;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.20);
+    }
+
+    .glass-btn,
+    .nav-btn,
+    .answer-btn,
+    .chip-btn,
+    .small-btn {
+      background: linear-gradient(135deg, var(--yellow-1), var(--green-1));
+    }
+
+    .glass-btn {
+      padding: 16px 18px;
+      min-height: 70px;
+      font-size: 1rem;
+      text-align: left;
+    }
+
+    .nav-btn,
+    .ghost-btn,
+    .small-btn {
+      padding: 12px 14px;
+      font-size: 0.95rem;
+    }
+
+    .answer-btn {
+      width: 100%;
+      padding: 16px;
+      text-align: left;
+      font-size: 1rem;
+      margin-top: 10px;
+    }
+
+    .ghost-btn {
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+    }
+
+    .chip-btn {
+      padding: 12px 14px;
+      text-align: left;
+      color: #0f140f;
+    }
+
+    .glass-btn:hover,
+    .nav-btn:hover,
+    .answer-btn:hover,
+    .ghost-btn:hover,
+    .chip-btn:hover,
+    .small-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .glass-btn:disabled,
+    .nav-btn:disabled,
+    .answer-btn:disabled,
+    .ghost-btn:disabled,
+    .chip-btn:disabled,
+    .small-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .kicker {
+      display: inline-block;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      color: var(--yellow-1);
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+    }
+
+    .stat-card {
+      background: var(--panel-strong);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px;
+    }
+
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin: 6px 0;
+    }
+
+    .progress-wrap {
+      width: 100%;
+      height: 14px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 10px 0 0;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--yellow-2), var(--green-1));
+      width: 0%;
+      transition: width 0.2s ease;
+    }
+
+    .question-meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .pill {
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.86rem;
+      color: var(--muted);
+    }
+
+    .feedback {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      min-height: 54px;
+    }
+
+    .ok { color: var(--ok); }
+    .bad { color: var(--danger); }
+
+    .table-like {
+      display: grid;
+      gap: 10px;
+    }
+
+    .row-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 16px;
+      padding: 14px;
+    }
+
+    .row-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .mini {
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+
+    .secure {
+      color: var(--ok);
+      font-weight: 700;
+    }
+
+    .needs-work {
+      color: var(--yellow-1);
+      font-weight: 700;
+    }
+
+    .danger-text {
+      color: #ffb4ad;
+      font-weight: 700;
+    }
+
+    .empty-state {
+      padding: 24px;
+      border: 1px dashed rgba(255,255,255,0.18);
+      border-radius: 18px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 960px) {
+      .hero { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
-
 <body>
-<div id="app">Loading...</div>
+  <div class="app-shell">
+    <div class="top-nav" id="topNav"></div>
+    <div id="app"></div>
+  </div>
 
-<script>
-const ANALYTICS_KEY = "gcseMathsDiagnosticAnalyticsV1";
-const WEAK_KEY = "gcseMathsWeakQuestions";
+  <script>
+    const CSV_FILE = "questions.csv";
+    const STORAGE_KEY = "mathsDiagnosticProgress_v1";
 
-let questionBank = [];
-let TOPICS = [];
-
-let questions = [];
-let index = 0;
-let score = 0;
-let locked = false;
-let countdownInterval = null;
-let currentMode = "";
-let currentTopic = "";
-
-/* =========================
-CSV PARSER (ROBUST)
-========================= */
-function parseCSV(text){
-  const rows = [];
-  let row = [];
-  let cell = "";
-  let inQuotes = false;
-
-  for(let i=0;i<text.length;i++){
-    const char = text[i];
-    const next = text[i+1];
-
-    if(char === '"'){
-      if(inQuotes && next === '"'){cell+='"'; i++;}
-      else inQuotes = !inQuotes;
-    }
-    else if(char === ',' && !inQuotes){
-      row.push(cell); cell="";
-    }
-    else if((char === '\n' || char === '\r') && !inQuotes){
-      row.push(cell);
-      rows.push(row);
-      row=[]; cell="";
-    }
-    else cell+=char;
-  }
-
-  return rows.filter(r=>r.length>1);
-}
-
-/* =========================
-LOAD CSV
-========================= */
-async function loadQuestions(){
-  const res = await fetch("questions.csv");
-  const text = await res.text();
-
-  const rows = parseCSV(text);
-
-  const headers = rows[0].map(h=>h.toLowerCase());
-
-  const i = {
-    topic: headers.indexOf("topic"),
-    question: headers.indexOf("question"),
-    a: headers.indexOf("option a"),
-    b: headers.indexOf("option b"),
-    c: headers.indexOf("option c"),
-    d: headers.indexOf("option d"),
-    correct: headers.indexOf("correct index"),
-    active: headers.indexOf("active")
-  };
-
-  questionBank = rows.slice(1).map(r=>{
-    if(r[i.active] !== "Yes") return null;
-
-    return {
-      q: r[i.question],
-      o: [r[i.a], r[i.b], r[i.c], r[i.d]],
-      a: parseInt(r[i.correct]),
-      t: r[i.topic]
+    const state = {
+      allQuestions: [],
+      activeQuestions: [],
+      topics: [],
+      subtopics: [],
+      view: "loading",
+      currentQuestions: [],
+      currentIndex: 0,
+      currentMode: null,
+      selectedTopic: null,
+      selectedSubtopic: null,
+      timedMode: false,
+      timerSeconds: 0,
+      timerHandle: null,
+      questionLocked: false,
+      sessionScore: 0,
+      sessionCorrect: 0,
+      sessionWrong: 0,
+      progress: loadProgress(),
+      lastDiagnosticSummary: null
     };
-  }).filter(Boolean);
 
-  TOPICS = [...new Set(questionBank.map(q=>q.t))];
+    function loadProgress() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { perQuestion: {}, revisionList: {} };
+      } catch {
+        return { perQuestion: {}, revisionList: {} };
+      }
+    }
 
-  startScreen();
-}
+    function saveProgress() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.progress));
+    }
 
-/* =========================
-WEAK QUESTION STORAGE
-========================= */
-function getWeak(){
-  return JSON.parse(localStorage.getItem(WEAK_KEY)||"[]");
-}
-function saveWeak(data){
-  localStorage.setItem(WEAK_KEY,JSON.stringify(data));
-}
-function addWeak(q){
-  const w = getWeak();
-  if(!w.find(x=>x.q===q.q)){
-    w.push(q);
-    saveWeak(w);
-  }
-}
-function removeWeak(q){
-  const w = getWeak().filter(x=>x.q!==q.q);
-  saveWeak(w);
-}
+    function normaliseQuestion(raw, fallbackId) {
+      const q = { ...raw };
+      q.ID = String(q.ID || fallbackId).trim();
+      q.Topic = String(q.Topic || "General").trim();
+      q.Subtopic = String(q.Subtopic || "").trim();
+      q.Question = String(q.Question || "").trim();
+      q["Option A"] = String(q["Option A"] || "").trim();
+      q["Option B"] = String(q["Option B"] || "").trim();
+      q["Option C"] = String(q["Option C"] || "").trim();
+      q["Option D"] = String(q["Option D"] || "").trim();
+      q["Correct Letter"] = String(q["Correct Letter"] || "").trim().toUpperCase();
+      q["Correct Index"] = Number(q["Correct Index"] ?? letterToIndex(q["Correct Letter"]));
+      q.Active = String(q.Active || "Yes").trim();
+      q.Notes = String(q.Notes || "").trim();
+      q.__key = buildQuestionKey(q);
+      return q;
+    }
 
-/* =========================
-RENDER
-========================= */
-function render(html){
-  document.getElementById("app").innerHTML = html;
-}
+    function buildQuestionKey(q) {
+      return `${q.ID}__${q.Topic}__${q.Question}`;
+    }
 
-/* =========================
-START SCREEN
-========================= */
-function startScreen(){
-  const weakCount = getWeak().length;
+    function letterToIndex(letter) {
+      return ({ A: 0, B: 1, C: 2, D: 3 })[letter] ?? 0;
+    }
 
-  render(`
-    <div class="panel">
-      <h2>GCSE Maths Diagnostic</h2>
-      <button class="big-btn" onclick="startDiagnostic()">Full Diagnostic</button>
-      <button class="big-btn" onclick="topicMenu()">Topic Practice</button>
-      <button class="big-btn" onclick="startWeakPractice()">Practise Weak Topics (${weakCount})</button>
-    </div>
-  `);
-}
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
 
-/* =========================
-MODES
-========================= */
-function startDiagnostic(){
-  currentMode="diagnostic";
-  questions = shuffle(questionBank).slice(0,20);
-  startQuiz();
-}
+    function getQuestionProgress(q) {
+      return state.progress.perQuestion[q.__key] || {
+        correctCount: 0,
+        wrongCount: 0,
+        lastResult: null,
+        topic: q.Topic,
+        subtopic: q.Subtopic || "",
+        question: q.Question
+      };
+    }
 
-function topicMenu(){
-  render(`
-    <div class="panel">
-      <h2>Select Topic</h2>
-      ${TOPICS.map(t=>`<button class="big-btn" onclick="startTopic('${t}')">${t}</button>`).join("")}
-      <button class="small-btn" onclick="startScreen()">Back</button>
-    </div>
-  `);
-}
+    function isSecure(q) {
+      return getQuestionProgress(q).correctCount >= 3;
+    }
 
-function startTopic(t){
-  currentMode="topic";
-  questions = shuffle(questionBank.filter(q=>q.t===t)).slice(0,10);
-  startQuiz();
-}
+    function addToRevision(q) {
+      state.progress.revisionList[q.__key] = {
+        id: q.ID,
+        topic: q.Topic,
+        subtopic: q.Subtopic || "",
+        question: q.Question
+      };
+    }
 
-function startWeakPractice(){
-  currentMode="weak";
-  const weak = getWeak();
+    function removeFromRevisionIfSecure(q) {
+      if (isSecure(q)) {
+        delete state.progress.revisionList[q.__key];
+      }
+    }
 
-  if(!weak.length){
-    render(`<div class="panel"><h2>No weak questions</h2><button onclick="startScreen()">Back</button></div>`);
-    return;
-  }
+    function updateQuestionStats(q, wasCorrect) {
+      const current = getQuestionProgress(q);
+      const next = {
+        ...current,
+        correctCount: current.correctCount + (wasCorrect ? 1 : 0),
+        wrongCount: current.wrongCount + (wasCorrect ? 0 : 1),
+        lastResult: wasCorrect ? "correct" : "wrong",
+        topic: q.Topic,
+        subtopic: q.Subtopic || "",
+        question: q.Question
+      };
+      state.progress.perQuestion[q.__key] = next;
+      if (wasCorrect) {
+        removeFromRevisionIfSecure(q);
+      } else {
+        addToRevision(q);
+      }
+      saveProgress();
+    }
 
-  questions = shuffle(weak);
-  startQuiz();
-}
+    function topicSummary() {
+      const topics = [...new Set(state.activeQuestions.map(q => q.Topic))].sort();
+      return topics.map(topic => {
+        const topicQs = state.activeQuestions.filter(q => q.Topic === topic);
+        const secureCount = topicQs.filter(isSecure).length;
+        const revisionCount = topicQs.filter(q => state.progress.revisionList[q.__key]).length;
+        const attempted = topicQs.filter(q => getQuestionProgress(q).correctCount > 0 || getQuestionProgress(q).wrongCount > 0).length;
+        return {
+          topic,
+          total: topicQs.length,
+          secureCount,
+          revisionCount,
+          attempted,
+          securePct: topicQs.length ? Math.round((secureCount / topicQs.length) * 100) : 0
+        };
+      });
+    }
 
-/* =========================
-QUIZ ENGINE (UNCHANGED CORE)
-========================= */
-function startQuiz(){
-  index=0;
-  score=0;
-  loadQuestion();
-}
+    function overallStats() {
+      const total = state.activeQuestions.length;
+      const secure = state.activeQuestions.filter(isSecure).length;
+      const revision = Object.keys(state.progress.revisionList).length;
+      const attempted = state.activeQuestions.filter(q => {
+        const p = getQuestionProgress(q);
+        return p.correctCount > 0 || p.wrongCount > 0;
+      }).length;
+      return { total, secure, revision, attempted };
+    }
 
-function loadQuestion(){
-  const q = questions[index];
+    function parseCSV() {
+      state.view = "loading";
+      render();
+      Papa.parse(CSV_FILE, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const cleaned = results.data
+            .map((row, i) => normaliseQuestion(row, i + 1))
+            .filter(q => q.Question && String(q.Active).toLowerCase() !== "no");
 
-  render(`
-    <div class="panel">
-      <h3>${q.t}</h3>
-      <h2>${q.q}</h2>
+          state.allQuestions = cleaned;
+          state.activeQuestions = cleaned;
+          state.topics = [...new Set(cleaned.map(q => q.Topic).filter(Boolean))].sort();
+          state.subtopics = [...new Set(cleaned.map(q => q.Subtopic).filter(Boolean))].sort();
+          state.view = "home";
+          render();
+        },
+        error: () => {
+          state.view = "error";
+          render();
+        }
+      });
+    }
 
-      ${q.o.map((opt,i)=>`
-        <div class="option" id="opt${i}" onclick="answer(${i})">${opt}</div>
-      `).join("")}
+    function setView(view) {
+      stopTimer();
+      state.view = view;
+      state.questionLocked = false;
+      render();
+    }
 
-      <div id="feedback"></div>
-      <button class="small-btn" onclick="startScreen()">Exit</button>
-    </div>
-  `);
-}
+    function startDiagnostic() {
+      const count = Math.min(20, state.activeQuestions.length);
+      state.currentMode = "diagnostic";
+      state.selectedTopic = null;
+      state.selectedSubtopic = null;
+      state.timedMode = false;
+      state.currentQuestions = shuffle(state.activeQuestions).slice(0, count);
+      state.currentIndex = 0;
+      state.sessionScore = 0;
+      state.sessionCorrect = 0;
+      state.sessionWrong = 0;
+      state.questionLocked = false;
+      state.view = "quiz";
+      render();
+    }
 
-function answer(choice){
-  if(locked) return;
-  locked=true;
+    function openPracticeTopics() {
+      state.view = "practiceTopics";
+      render();
+    }
 
-  const q = questions[index];
-  const correct = document.getElementById("opt"+q.a);
-  const selected = document.getElementById("opt"+choice);
-  const fb = document.getElementById("feedback");
+    function openResults() {
+      state.view = "results";
+      render();
+    }
 
-  if(choice===q.a){
-    score++;
-    removeWeak(q);
-    selected.classList.add("correct");
-    fb.innerHTML="Correct";
-  } else {
-    addWeak(q);
-    selected.classList.add("wrong");
-    correct.classList.add("correct");
-    fb.innerHTML="Incorrect";
-  }
+    function openRevisionList() {
+      state.view = "revision";
+      render();
+    }
 
-  let t=3;
-  fb.innerHTML += ` - Next in ${t}s`;
+    function startPractice(topic, subtopic = null, timed = false) {
+      let filtered = state.activeQuestions.filter(q => q.Topic === topic);
+      if (subtopic) filtered = filtered.filter(q => q.Subtopic === subtopic);
+      if (!filtered.length) return;
 
-  countdownInterval = setInterval(()=>{
-    t--;
-    if(t>0) fb.innerHTML=`Next in ${t}s`;
-  },1000);
+      state.currentMode = timed ? "timedPractice" : "practice";
+      state.selectedTopic = topic;
+      state.selectedSubtopic = subtopic;
+      state.timedMode = timed;
+      state.currentQuestions = buildPracticeSet(filtered, timed ? 20 : filtered.length);
+      state.currentIndex = 0;
+      state.sessionScore = 0;
+      state.sessionCorrect = 0;
+      state.sessionWrong = 0;
+      state.questionLocked = false;
+      state.view = "quiz";
 
-  setTimeout(()=>{
-    clearInterval(countdownInterval);
-    nextQuestion();
-  },3000);
-}
+      if (timed) startTimer(60);
+      render();
+    }
 
-function nextQuestion(){
-  index++;
-  locked=false;
+    function buildPracticeSet(filtered, count) {
+      const insecure = filtered.filter(q => !isSecure(q));
+      const secure = filtered.filter(q => isSecure(q));
+      const ordered = [...shuffle(insecure), ...shuffle(secure)];
+      return ordered.slice(0, Math.min(count, ordered.length));
+    }
 
-  if(index<questions.length){
-    loadQuestion();
-  } else {
-    finishQuiz();
-  }
-}
+    function startRevisionMode() {
+      const keys = Object.keys(state.progress.revisionList);
+      const revisionQs = state.activeQuestions.filter(q => keys.includes(q.__key));
+      if (!revisionQs.length) {
+        alert("Your revision list is empty.");
+        return;
+      }
+      state.currentMode = "revision";
+      state.selectedTopic = null;
+      state.selectedSubtopic = null;
+      state.timedMode = false;
+      state.currentQuestions = shuffle(revisionQs);
+      state.currentIndex = 0;
+      state.sessionScore = 0;
+      state.sessionCorrect = 0;
+      state.sessionWrong = 0;
+      state.questionLocked = false;
+      state.view = "quiz";
+      render();
+    }
 
-function finishQuiz(){
-  const percent = Math.round((score/questions.length)*100);
+    function startTimer(seconds) {
+      stopTimer();
+      state.timerSeconds = seconds;
+      state.timerHandle = setInterval(() => {
+        state.timerSeconds -= 1;
+        if (state.timerSeconds <= 0) {
+          stopTimer();
+          finishSession(true);
+          return;
+        }
+        updateQuestionHeaderOnly();
+      }, 1000);
+    }
 
-  render(`
-    <div class="panel">
-      <h2>Score: ${percent}%</h2>
-      <button class="big-btn" onclick="startScreen()">Home</button>
-      <button class="big-btn" onclick="startDiagnostic()">Retry</button>
-    </div>
-  `);
-}
+    function stopTimer() {
+      if (state.timerHandle) clearInterval(state.timerHandle);
+      state.timerHandle = null;
+      state.timerSeconds = 0;
+    }
 
-/* =========================
-UTIL
-========================= */
-function shuffle(a){
-  return [...a].sort(()=>Math.random()-0.5);
-}
+    function updateQuestionHeaderOnly() {
+      const el = document.getElementById("timerPill");
+      if (el) el.textContent = `Time: ${state.timerSeconds}s`;
+    }
 
-/* =========================
-INIT
-========================= */
-loadQuestions();
-</script>
+    function answerQuestion(letter) {
+      if (state.questionLocked) return;
+      const q = state.currentQuestions[state.currentIndex];
+      const correct = q["Correct Letter"] === letter;
+      state.questionLocked = true;
+      state.sessionScore += correct ? 1 : 0;
+      state.sessionCorrect += correct ? 1 : 0;
+      state.sessionWrong += correct ? 0 : 1;
+      updateQuestionStats(q, correct);
 
+      const feedback = document.getElementById("feedback");
+      if (feedback) {
+        const correctText = q[`Option ${q["Correct Letter"]}`];
+        feedback.innerHTML = correct
+          ? `<span class="ok"><strong>Correct.</strong></span> Secure count for this question: ${getQuestionProgress(q).correctCount}/3`
+          : `<span class="bad"><strong>Not correct.</strong></span> Correct answer: <strong>${q["Correct Letter"]}</strong> – ${correctText}. This question has been added to your revision list.`;
+      }
+
+      highlightButtons(letter, q["Correct Letter"]);
+    }
+
+    function highlightButtons(chosen, correct) {
+      document.querySelectorAll(".answer-btn").forEach(btn => {
+        const letter = btn.dataset.letter;
+        if (letter === correct) {
+          btn.style.outline = "3px solid #30d158";
+        }
+        if (letter === chosen && chosen !== correct) {
+          btn.style.outline = "3px solid #ff5f57";
+        }
+        btn.disabled = true;
+      });
+      const nextWrap = document.getElementById("nextWrap");
+      if (nextWrap) nextWrap.style.display = "block";
+    }
+
+    function nextQuestion() {
+      state.questionLocked = false;
+      state.currentIndex += 1;
+      if (state.currentIndex >= state.currentQuestions.length) {
+        finishSession(false);
+        return;
+      }
+      render();
+    }
+
+    function finishSession(timedOut) {
+      stopTimer();
+      if (state.currentMode === "diagnostic") {
+        const summary = buildDiagnosticSummary();
+        state.lastDiagnosticSummary = summary;
+        state.view = "diagnosticComplete";
+        render();
+        return;
+      }
+      state.view = "sessionComplete";
+      state.timedOut = timedOut;
+      render();
+    }
+
+    function buildDiagnosticSummary() {
+      const askedTopics = [...new Set(state.currentQuestions.map(q => q.Topic))];
+      return askedTopics.map(topic => {
+        const questions = state.currentQuestions.filter(q => q.Topic === topic);
+        const correct = questions.filter(q => getQuestionProgress(q).lastResult === "correct").length;
+        return {
+          topic,
+          asked: questions.length,
+          correct,
+          incorrect: questions.length - correct,
+          pct: questions.length ? Math.round((correct / questions.length) * 100) : 0
+        };
+      }).sort((a, b) => a.pct - b.pct);
+    }
+
+    function renderTopNav() {
+      const nav = document.getElementById("topNav");
+      if (!nav) return;
+      if (state.view === "loading" || state.view === "error") {
+        nav.innerHTML = "";
+        return;
+      }
+      nav.innerHTML = `
+        <button class="nav-btn" onclick="goHome()">Home</button>
+        <button class="nav-btn" onclick="startDiagnostic()">Diagnostic</button>
+        <button class="nav-btn" onclick="openPracticeTopics()">Practice</button>
+        <button class="nav-btn" onclick="openResults()">Results</button>
+        <button class="nav-btn" onclick="openRevisionList()">Revision List</button>
+      `;
+    }
+
+    function goHome() {
+      stopTimer();
+      state.view = "home";
+      render();
+    }
+
+    function render() {
+      renderTopNav();
+      const app = document.getElementById("app");
+      if (!app) return;
+
+      if (state.view === "loading") {
+        app.innerHTML = `<div class="panel content-card"><h2>Loading questions…</h2><p class="muted">Reading from <strong>${CSV_FILE}</strong>. Any changes to your CSV will update the topic and subtopic lists automatically.</p></div>`;
+        return;
+      }
+
+      if (state.view === "error") {
+        app.innerHTML = `
+          <div class="panel content-card">
+            <h2>Could not read the CSV file</h2>
+            <p class="muted">Check that <strong>${CSV_FILE}</strong> is in the same folder as <strong>index.html</strong>, and that the column headers match your template.</p>
+          </div>
+        `;
+        return;
+      }
+
+      if (state.view === "home") {
+        renderHome(app);
+        return;
+      }
+
+      if (state.view === "practiceTopics") {
+        renderPracticeTopics(app);
+        return;
+      }
+
+      if (state.view === "quiz") {
+        renderQuiz(app);
+        return;
+      }
+
+      if (state.view === "results") {
+        renderResults(app);
+        return;
+      }
+
+      if (state.view === "revision") {
+        renderRevision(app);
+        return;
+      }
+
+      if (state.view === "diagnosticComplete") {
+        renderDiagnosticComplete(app);
+        return;
+      }
+
+      if (state.view === "sessionComplete") {
+        renderSessionComplete(app);
+        return;
+      }
+    }
+
+    function renderHome(app) {
+      const stats = overallStats();
+      const summary = topicSummary().slice(0, 6);
+      app.innerHTML = `
+        <div class="hero">
+          <div class="panel hero-card">
+            <div class="kicker">Maths Diagnostic Tool</div>
+            <h1>Answer 20 questions to start the diagnosis of what you do and do not know.</h1>
+            <p class="muted">The diagnostic uses your CSV file. The practice topics and subtopics are also pulled directly from the CSV, so if you edit the file later the app updates automatically.</p>
+            <div class="button-row">
+              <button class="glass-btn" onclick="startDiagnostic()">Start Diagnostic<br><span class="mini">20 mixed questions</span></button>
+              <button class="glass-btn" onclick="openPracticeTopics()">Practice<br><span class="mini">Choose a topic from the CSV</span></button>
+              <button class="glass-btn" onclick="openResults()">Results<br><span class="mini">See strengths and gaps</span></button>
+              <button class="glass-btn" onclick="startRevisionMode()">Revision List<br><span class="mini">Questions answered incorrectly</span></button>
+            </div>
+            <div class="stats-grid">
+              <div class="stat-card"><div class="mini">Questions in bank</div><div class="stat-value">${stats.total}</div></div>
+              <div class="stat-card"><div class="mini">Attempted</div><div class="stat-value">${stats.attempted}</div></div>
+              <div class="stat-card"><div class="mini">Secure (3+ correct)</div><div class="stat-value">${stats.secure}</div></div>
+              <div class="stat-card"><div class="mini">Revision list</div><div class="stat-value">${stats.revision}</div></div>
+            </div>
+          </div>
+          <div class="panel tracker-card">
+            <h2>Tracking sheet</h2>
+            ${summary.length ? summary.map(item => `
+              <div class="row-card" style="margin-bottom:10px;">
+                <div class="row-top">
+                  <strong>${item.topic}</strong>
+                  <span class="mini">${item.secureCount}/${item.total} secure</span>
+                </div>
+                <div class="progress-wrap"><div class="progress-bar" style="width:${item.securePct}%;"></div></div>
+                <div class="mini" style="margin-top:8px;">Needs work: ${item.revisionCount} | Attempted: ${item.attempted}</div>
+              </div>
+            `).join("") : `<div class="empty-state">Start a diagnostic to begin tracking.</div>`}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPracticeTopics(app) {
+      const topics = topicSummary();
+      app.innerHTML = `
+        <div class="panel content-card">
+          <h2>Practice by topic</h2>
+          <p class="muted">Only topics found in the CSV file are shown here. If you later add a <strong>Subtopic</strong> column, those can also be used automatically.</p>
+          <div class="topic-grid">
+            ${topics.map(item => {
+              const subs = [...new Set(state.activeQuestions.filter(q => q.Topic === item.topic && q.Subtopic).map(q => q.Subtopic))].sort();
+              return `
+                <div class="panel topic-card">
+                  <h3>${item.topic}</h3>
+                  <p class="mini">${item.total} questions | ${item.secureCount} secure | ${item.revisionCount} in revision</p>
+                  <div class="progress-wrap"><div class="progress-bar" style="width:${item.securePct}%;"></div></div>
+                  <div class="button-row" style="margin-top:14px;">
+                    <button class="small-btn" onclick="startPractice('${escapeJs(item.topic)}', null, false)">Practice topic</button>
+                    <button class="small-btn" onclick="startPractice('${escapeJs(item.topic)}', null, true)">Timed practice</button>
+                  </div>
+                  ${subs.length ? `
+                    <div style="margin-top:14px;">
+                      <div class="mini" style="margin-bottom:8px;">Subtopics</div>
+                      <div class="subtopic-grid">
+                        ${subs.map(sub => `<button class="chip-btn" onclick="startPractice('${escapeJs(item.topic)}','${escapeJs(sub)}',false)">${sub}</button>`).join("")}
+                      </div>
+                    </div>
+                  ` : ""}
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderQuiz(app) {
+      const q = state.currentQuestions[state.currentIndex];
+      const total = state.currentQuestions.length;
+      const qProgress = getQuestionProgress(q);
+      app.innerHTML = `
+        <div class="panel question-card">
+          <div class="row-top">
+            <div>
+              <div class="kicker">${state.currentMode === "diagnostic" ? "Diagnostic" : state.currentMode === "timedPractice" ? "Timed Practice" : state.currentMode === "revision" ? "Revision" : "Practice"}</div>
+              <h2>Question ${state.currentIndex + 1} of ${total}</h2>
+            </div>
+            <div class="question-meta">
+              <span class="pill">Topic: ${q.Topic}</span>
+              ${q.Subtopic ? `<span class="pill">Subtopic: ${q.Subtopic}</span>` : ""}
+              ${state.timedMode ? `<span class="pill" id="timerPill">Time: ${state.timerSeconds}s</span>` : ""}
+              <span class="pill">Secure count: ${qProgress.correctCount}/3</span>
+            </div>
+          </div>
+          <div class="progress-wrap"><div class="progress-bar" style="width:${Math.round(((state.currentIndex) / total) * 100)}%;"></div></div>
+          <div style="margin-top:18px;">
+            <h3>${q.Question}</h3>
+            <button class="answer-btn" data-letter="A" onclick="answerQuestion('A')">A. ${q["Option A"]}</button>
+            <button class="answer-btn" data-letter="B" onclick="answerQuestion('B')">B. ${q["Option B"]}</button>
+            <button class="answer-btn" data-letter="C" onclick="answerQuestion('C')">C. ${q["Option C"]}</button>
+            <button class="answer-btn" data-letter="D" onclick="answerQuestion('D')">D. ${q["Option D"]}</button>
+            <div class="feedback" id="feedback">Choose one answer.</div>
+            <div id="nextWrap" style="display:none; margin-top:14px;">
+              <button class="small-btn" onclick="nextQuestion()">Next question</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderResults(app) {
+      const topics = topicSummary();
+      const weakest = [...topics].sort((a, b) => a.securePct - b.securePct).slice(0, 6);
+      app.innerHTML = `
+        <div class="panel results-card">
+          <h2>Results</h2>
+          <p class="muted">You need to answer a question correctly at least <strong>three times</strong> for it to count as secure. Questions answered incorrectly go into your revision list.</p>
+          <div class="results-grid">
+            ${topics.length ? topics.map(item => `
+              <div class="row-card">
+                <div class="row-top">
+                  <strong>${item.topic}</strong>
+                  <span class="${item.securePct >= 70 ? "secure" : item.securePct >= 40 ? "needs-work" : "danger-text"}">${item.securePct}% secure</span>
+                </div>
+                <div class="mini">Attempted: ${item.attempted}/${item.total}</div>
+                <div class="mini">Secure: ${item.secureCount} | Revision: ${item.revisionCount}</div>
+                <div class="progress-wrap"><div class="progress-bar" style="width:${item.securePct}%;"></div></div>
+                <div class="button-row" style="margin-top:12px;">
+                  <button class="small-btn" onclick="startPractice('${escapeJs(item.topic)}', null, false)">Practise topic</button>
+                  <button class="ghost-btn" onclick="startPractice('${escapeJs(item.topic)}', null, true)">Timed practice</button>
+                </div>
+              </div>
+            `).join("") : `<div class="empty-state">No results yet. Start the diagnostic first.</div>`}
+          </div>
+          <div style="margin-top:22px;">
+            <h3>Priority topics to practise</h3>
+            ${weakest.length ? weakest.map(item => `<div class="mini" style="margin-bottom:8px;"><strong>${item.topic}</strong> — ${item.securePct}% secure, ${item.revisionCount} on revision list.</div>`).join("") : `<div class="mini">No diagnostic data yet.</div>`}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderRevision(app) {
+      const keys = Object.keys(state.progress.revisionList);
+      const questions = state.activeQuestions.filter(q => keys.includes(q.__key));
+      app.innerHTML = `
+        <div class="panel revision-card">
+          <div class="row-top">
+            <div>
+              <h2>Revision list</h2>
+              <p class="muted">Any question answered incorrectly appears here until it becomes secure.</p>
+            </div>
+            <button class="small-btn" onclick="startRevisionMode()" ${questions.length ? "" : "disabled"}>Practise revision list</button>
+          </div>
+          <div class="revision-grid">
+            ${questions.length ? questions.map(q => {
+              const p = getQuestionProgress(q);
+              return `
+                <div class="row-card">
+                  <div class="mini">${q.Topic}${q.Subtopic ? ` • ${q.Subtopic}` : ""}</div>
+                  <strong>${q.Question}</strong>
+                  <div class="mini" style="margin-top:8px;">Correct count: ${p.correctCount}/3 | Wrong: ${p.wrongCount}</div>
+                </div>
+              `;
+            }).join("") : `<div class="empty-state">Nothing in the revision list.</div>`}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDiagnosticComplete(app) {
+      const summary = state.lastDiagnosticSummary || [];
+      app.innerHTML = `
+        <div class="panel results-card">
+          <h2>Diagnostic complete</h2>
+          <p class="muted">Here is a first diagnosis of what to practise next.</p>
+          <div class="stats-grid">
+            <div class="stat-card"><div class="mini">Correct</div><div class="stat-value">${state.sessionCorrect}</div></div>
+            <div class="stat-card"><div class="mini">Incorrect</div><div class="stat-value">${state.sessionWrong}</div></div>
+            <div class="stat-card"><div class="mini">Score</div><div class="stat-value">${state.sessionScore}/${state.currentQuestions.length}</div></div>
+          </div>
+          <div style="margin-top:20px;" class="table-like">
+            ${summary.length ? summary.map(item => `
+              <div class="row-card">
+                <div class="row-top">
+                  <strong>${item.topic}</strong>
+                  <span class="${item.pct >= 70 ? "secure" : item.pct >= 40 ? "needs-work" : "danger-text"}">${item.pct}%</span>
+                </div>
+                <div class="mini">Asked: ${item.asked} | Correct: ${item.correct} | Incorrect: ${item.incorrect}</div>
+                <div class="button-row" style="margin-top:12px;">
+                  <button class="small-btn" onclick="startPractice('${escapeJs(item.topic)}', null, false)">Practise this topic</button>
+                  <button class="ghost-btn" onclick="startPractice('${escapeJs(item.topic)}', null, true)">Timed practice</button>
+                </div>
+              </div>
+            `).join("") : `<div class="empty-state">No summary available.</div>`}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSessionComplete(app) {
+      app.innerHTML = `
+        <div class="panel results-card">
+          <h2>${state.timedOut ? "Time complete" : "Session complete"}</h2>
+          <div class="stats-grid">
+            <div class="stat-card"><div class="mini">Correct</div><div class="stat-value">${state.sessionCorrect}</div></div>
+            <div class="stat-card"><div class="mini">Incorrect</div><div class="stat-value">${state.sessionWrong}</div></div>
+            <div class="stat-card"><div class="mini">Score</div><div class="stat-value">${state.sessionScore}/${state.currentQuestions.length}</div></div>
+          </div>
+          <div class="button-row" style="margin-top:18px;">
+            <button class="glass-btn" onclick="openPracticeTopics()">Back to Practice</button>
+            <button class="glass-btn" onclick="openResults()">View Results</button>
+            <button class="glass-btn" onclick="openRevisionList()">Open Revision List</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function escapeJs(text) {
+      return String(text).replace(/'/g, "\\'");
+    }
+
+    parseCSV();
+  </script>
 </body>
 </html>
