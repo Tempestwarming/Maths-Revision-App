@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GCSE Maths Diagnostic</title>
+
+<style>
+/* KEEPING YOUR STYLING EXACT */
+body{font-family:Arial;background:#052a16;color:#fff;margin:0;padding:20px}
+.panel{background:#111;padding:20px;border-radius:12px;margin-bottom:15px}
+.big-btn{padding:12px;width:100%;margin-top:10px;background:gold;border:none;border-radius:8px;font-weight:bold;cursor:pointer}
+.small-btn{padding:10px;margin-top:10px;background:#333;color:#fff;border:none;border-radius:6px;cursor:pointer}
+.option{padding:12px;margin:10px 0;background:#222;border-radius:8px;cursor:pointer}
+.correct{background:#14532d}
+.wrong{background:#7f1d1d}
+</style>
+</head>
+
+<body>
+<div id="app">Loading...</div>
+
+<script>
+const ANALYTICS_KEY = "gcseMathsDiagnosticAnalyticsV1";
+const WEAK_KEY = "gcseMathsWeakQuestions";
+
+let questionBank = [];
+let TOPICS = [];
+
+let questions = [];
+let index = 0;
+let score = 0;
+let locked = false;
+let countdownInterval = null;
+let currentMode = "";
+let currentTopic = "";
+
+/* =========================
+CSV PARSER (ROBUST)
+========================= */
+function parseCSV(text){
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuotes = false;
+
+  for(let i=0;i<text.length;i++){
+    const char = text[i];
+    const next = text[i+1];
+
+    if(char === '"'){
+      if(inQuotes && next === '"'){cell+='"'; i++;}
+      else inQuotes = !inQuotes;
+    }
+    else if(char === ',' && !inQuotes){
+      row.push(cell); cell="";
+    }
+    else if((char === '\n' || char === '\r') && !inQuotes){
+      row.push(cell);
+      rows.push(row);
+      row=[]; cell="";
+    }
+    else cell+=char;
+  }
+
+  return rows.filter(r=>r.length>1);
+}
+
+/* =========================
+LOAD CSV
+========================= */
+async function loadQuestions(){
+  const res = await fetch("questions.csv");
+  const text = await res.text();
+
+  const rows = parseCSV(text);
+
+  const headers = rows[0].map(h=>h.toLowerCase());
+
+  const i = {
+    topic: headers.indexOf("topic"),
+    question: headers.indexOf("question"),
+    a: headers.indexOf("option a"),
+    b: headers.indexOf("option b"),
+    c: headers.indexOf("option c"),
+    d: headers.indexOf("option d"),
+    correct: headers.indexOf("correct index"),
+    active: headers.indexOf("active")
+  };
+
+  questionBank = rows.slice(1).map(r=>{
+    if(r[i.active] !== "Yes") return null;
+
+    return {
+      q: r[i.question],
+      o: [r[i.a], r[i.b], r[i.c], r[i.d]],
+      a: parseInt(r[i.correct]),
+      t: r[i.topic]
+    };
+  }).filter(Boolean);
+
+  TOPICS = [...new Set(questionBank.map(q=>q.t))];
+
+  startScreen();
+}
+
+/* =========================
+WEAK QUESTION STORAGE
+========================= */
+function getWeak(){
+  return JSON.parse(localStorage.getItem(WEAK_KEY)||"[]");
+}
+function saveWeak(data){
+  localStorage.setItem(WEAK_KEY,JSON.stringify(data));
+}
+function addWeak(q){
+  const w = getWeak();
+  if(!w.find(x=>x.q===q.q)){
+    w.push(q);
+    saveWeak(w);
+  }
+}
+function removeWeak(q){
+  const w = getWeak().filter(x=>x.q!==q.q);
+  saveWeak(w);
+}
+
+/* =========================
+RENDER
+========================= */
+function render(html){
+  document.getElementById("app").innerHTML = html;
+}
+
+/* =========================
+START SCREEN
+========================= */
+function startScreen(){
+  const weakCount = getWeak().length;
+
+  render(`
+    <div class="panel">
+      <h2>GCSE Maths Diagnostic</h2>
+      <button class="big-btn" onclick="startDiagnostic()">Full Diagnostic</button>
+      <button class="big-btn" onclick="topicMenu()">Topic Practice</button>
+      <button class="big-btn" onclick="startWeakPractice()">Practise Weak Topics (${weakCount})</button>
+    </div>
+  `);
+}
+
+/* =========================
+MODES
+========================= */
+function startDiagnostic(){
+  currentMode="diagnostic";
+  questions = shuffle(questionBank).slice(0,20);
+  startQuiz();
+}
+
+function topicMenu(){
+  render(`
+    <div class="panel">
+      <h2>Select Topic</h2>
+      ${TOPICS.map(t=>`<button class="big-btn" onclick="startTopic('${t}')">${t}</button>`).join("")}
+      <button class="small-btn" onclick="startScreen()">Back</button>
+    </div>
+  `);
+}
+
+function startTopic(t){
+  currentMode="topic";
+  questions = shuffle(questionBank.filter(q=>q.t===t)).slice(0,10);
+  startQuiz();
+}
+
+function startWeakPractice(){
+  currentMode="weak";
+  const weak = getWeak();
+
+  if(!weak.length){
+    render(`<div class="panel"><h2>No weak questions</h2><button onclick="startScreen()">Back</button></div>`);
+    return;
+  }
+
+  questions = shuffle(weak);
+  startQuiz();
+}
+
+/* =========================
+QUIZ ENGINE (UNCHANGED CORE)
+========================= */
+function startQuiz(){
+  index=0;
+  score=0;
+  loadQuestion();
+}
+
+function loadQuestion(){
+  const q = questions[index];
+
+  render(`
+    <div class="panel">
+      <h3>${q.t}</h3>
+      <h2>${q.q}</h2>
+
+      ${q.o.map((opt,i)=>`
+        <div class="option" id="opt${i}" onclick="answer(${i})">${opt}</div>
+      `).join("")}
+
+      <div id="feedback"></div>
+      <button class="small-btn" onclick="startScreen()">Exit</button>
+    </div>
+  `);
+}
+
+function answer(choice){
+  if(locked) return;
+  locked=true;
+
+  const q = questions[index];
+  const correct = document.getElementById("opt"+q.a);
+  const selected = document.getElementById("opt"+choice);
+  const fb = document.getElementById("feedback");
+
+  if(choice===q.a){
+    score++;
+    removeWeak(q);
+    selected.classList.add("correct");
+    fb.innerHTML="Correct";
+  } else {
+    addWeak(q);
+    selected.classList.add("wrong");
+    correct.classList.add("correct");
+    fb.innerHTML="Incorrect";
+  }
+
+  let t=3;
+  fb.innerHTML += ` - Next in ${t}s`;
+
+  countdownInterval = setInterval(()=>{
+    t--;
+    if(t>0) fb.innerHTML=`Next in ${t}s`;
+  },1000);
+
+  setTimeout(()=>{
+    clearInterval(countdownInterval);
+    nextQuestion();
+  },3000);
+}
+
+function nextQuestion(){
+  index++;
+  locked=false;
+
+  if(index<questions.length){
+    loadQuestion();
+  } else {
+    finishQuiz();
+  }
+}
+
+function finishQuiz(){
+  const percent = Math.round((score/questions.length)*100);
+
+  render(`
+    <div class="panel">
+      <h2>Score: ${percent}%</h2>
+      <button class="big-btn" onclick="startScreen()">Home</button>
+      <button class="big-btn" onclick="startDiagnostic()">Retry</button>
+    </div>
+  `);
+}
+
+/* =========================
+UTIL
+========================= */
+function shuffle(a){
+  return [...a].sort(()=>Math.random()-0.5);
+}
+
+/* =========================
+INIT
+========================= */
+loadQuestions();
+</script>
+
+</body>
+</html>
